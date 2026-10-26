@@ -128,12 +128,15 @@ struct Runtime::Impl {
   std::unique_ptr<Sexy::WidgetManager> manager;
   std::unique_ptr<Sexy::MemoryImage> canvas;
   SDL_Window *window = nullptr;
+  SDL_Window *detailsWindow = nullptr;
+  std::unique_ptr<Sexy::MemoryImage> detailsCanvas;
   bool mobile = false, visible = false, closeRequested = false,
        placementRequested = false;
   Command placement;
   std::uint32_t lastDraw = 0;
   double credit = 0;
-  int x = SDL_WINDOWPOS_CENTERED, y = SDL_WINDOWPOS_CENTERED, w = 960, h = 700;
+  int x = SDL_WINDOWPOS_CENTERED, y = SDL_WINDOWPOS_CENTERED, w = 450, h = 275;
+  bool panelLanguage = true;
   std::string settings;
   Impl(LawnApp *a) : app(a), service(a) {
 #if defined(__ANDROID__) || defined(__IPHONEOS__) ||                           \
@@ -141,10 +144,10 @@ struct Runtime::Impl {
     mobile = true;
 #endif
     mobile = mobile || a->mTrainerMobile;
-    settings = Sexy::GetAppDataPath("trainer-window.cfg");
+    settings = Sexy::GetAppDataPath("trainer-window-classic.cfg");
     std::ifstream in(settings);
     int px, py, pw, ph;
-    if (in >> px >> py >> pw >> ph && pw >= 800 && pw <= 2400 && ph >= 640 &&
+    if (in >> px >> py >> pw >> ph && pw >= 450 && pw <= 2400 && ph >= 275 &&
         ph <= 1600) {
       x = px;
       y = py;
@@ -157,6 +160,10 @@ struct Runtime::Impl {
           placement = std::move(c);
           placementRequested = true;
         });
+    panel->embedded = mobile;
+    panelLanguage = service.chinese;
+    w = panel->PreferredWidth();
+    h = panel->PreferredHeight();
     panel->SetVisible(false);
   }
   void SaveWindow() {
@@ -199,6 +206,8 @@ Runtime::~Runtime() {
   p.canvas.reset();
   if (p.window)
     SDL_DestroyWindow(p.window);
+  if (p.detailsWindow)
+    SDL_DestroyWindow(p.detailsWindow);
   active = nullptr;
   owner = nullptr;
 }
@@ -251,7 +260,8 @@ void Runtime::Toggle() {
       p.panel->Resize(10, 10, p.app->mWidth - 20, p.app->mHeight - 20);
       p.app->mWidgetManager->AddWidget(p.panel.get());
     } else {
-      SDL_SetWindowMinimumSize(p.window, 800, 640);
+      SDL_SetWindowMinimumSize(p.window, p.panel->PreferredWidth(),
+                               p.panel->PreferredHeight());
       SDL_Rect bounds{};
       if (SDL_GetDisplayUsableBounds(
               SDL_GetWindowDisplayIndex(
@@ -294,6 +304,7 @@ void Runtime::Tick() {
     Toggle();
   p.launcher->SetVisible(!p.service.state.replay);
   if (p.service.state.replay) {
+    p.panel->detailsOpen = false;
     if (p.visible) {
       Toggle();
       SDL_RaiseWindow(static_cast<SDL_Window *>(p.app->mWindow));
@@ -323,7 +334,38 @@ int Runtime::UpdateCount(int original) {
 }
 void Runtime::Pump() {
   auto &p = *impl;
+  if (p.window && p.panelLanguage != p.service.chinese) {
+    p.panelLanguage = p.service.chinese;
+    SDL_SetWindowMinimumSize(p.window, p.panel->PreferredWidth(),
+                             p.panel->PreferredHeight());
+    SDL_SetWindowSize(p.window, p.panel->PreferredWidth(),
+                      p.panel->PreferredHeight());
+    SDL_SetWindowTitle(
+        p.window, p.service.chinese
+                      ? "PvZ Toolkit - 植物大战僵尸辅助工具 (Portable)"
+                      : "PvZ Toolkit - Plants vs. Zombies Tool Kit (Portable)");
+  }
   PumpFileDialogs();
+  if (!p.mobile && p.panel->detailsOpen && !p.detailsWindow) {
+    p.detailsWindow = SDL_CreateWindow(
+        p.service.chinese ? "出怪数量统计" : "Spawning Counting",
+        SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
+        p.service.chinese ? 847 : 947, 629,
+        SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
+    if (p.detailsWindow) {
+      p.detailsCanvas = std::make_unique<Sexy::MemoryImage>();
+      SDL_SetWindowMinimumSize(p.detailsWindow, 450, 300);
+    } else
+      p.panel->detailsOpen = false;
+  }
+  if (p.detailsWindow) {
+    bool shown = (SDL_GetWindowFlags(p.detailsWindow) & SDL_WINDOW_SHOWN) != 0;
+    if (p.panel->detailsOpen && !shown) {
+      SDL_ShowWindow(p.detailsWindow);
+      SDL_RaiseWindow(p.detailsWindow);
+    } else if (!p.panel->detailsOpen && shown)
+      SDL_HideWindow(p.detailsWindow);
+  }
   if (p.placementRequested) {
     p.placementRequested = false;
     if (p.service.state.board && !p.service.state.replay) {
@@ -343,7 +385,7 @@ void Runtime::Pump() {
     if (p.visible)
       Toggle();
   }
-  if (!p.visible)
+  if (!p.visible && !p.panel->detailsOpen)
     return;
   std::uint32_t now = SDL_GetTicks();
   if (now - p.lastDraw < 33)
@@ -353,6 +395,27 @@ void Runtime::Pump() {
     p.panel->Update();
     return;
   }
+  if (p.detailsWindow && p.panel->detailsOpen) {
+    int w, h;
+    SDL_GetWindowSize(p.detailsWindow, &w, &h);
+    if (p.detailsCanvas->mWidth != w || p.detailsCanvas->mHeight != h)
+      p.detailsCanvas->Create(w, h);
+    Sexy::Graphics dg(p.detailsCanvas.get());
+    p.panel->DrawDetails(&dg, w, h);
+    auto *dest = SDL_GetWindowSurface(p.detailsWindow);
+    auto *src = SDL_CreateRGBSurfaceWithFormatFrom(
+        p.detailsCanvas->GetBits(), w, h, 32, w * 4, SDL_PIXELFORMAT_ARGB8888);
+    if (src && dest) {
+      SDL_BlitScaled(src, nullptr, dest, nullptr);
+      SDL_UpdateWindowSurface(p.detailsWindow);
+    }
+    if (src)
+      SDL_FreeSurface(src);
+    SDL_GL_MakeCurrent(static_cast<SDL_Window *>(p.app->mWindow),
+                       p.app->mContext);
+  }
+  if (!p.visible)
+    return;
   SDL_GetWindowSize(p.window, &p.w, &p.h);
   if (p.canvas->mWidth != p.w || p.canvas->mHeight != p.h) {
     p.canvas->Create(p.w, p.h);
@@ -375,8 +438,10 @@ void Runtime::Pump() {
                      p.app->mContext);
 }
 bool Runtime::ToolFocused() const {
-  return impl->window && impl->visible &&
-         (SDL_GetWindowFlags(impl->window) & SDL_WINDOW_INPUT_FOCUS);
+  return (impl->window && impl->visible &&
+          (SDL_GetWindowFlags(impl->window) & SDL_WINDOW_INPUT_FOCUS)) ||
+         (impl->detailsWindow && impl->panel->detailsOpen &&
+          (SDL_GetWindowFlags(impl->detailsWindow) & SDL_WINDOW_INPUT_FOCUS));
 }
 bool Runtime::Event(const SDL_Event &e) {
   auto &p = *impl;
@@ -409,6 +474,27 @@ bool Runtime::Event(const SDL_Event &e) {
   case SDL_TEXTEDITING:
     id = e.edit.windowID;
     break;
+  }
+  if (p.detailsWindow && id == SDL_GetWindowID(p.detailsWindow)) {
+    if (e.type == SDL_WINDOWEVENT) {
+      if (e.window.event == SDL_WINDOWEVENT_CLOSE) {
+        p.panel->detailsOpen = false;
+        SDL_HideWindow(p.detailsWindow);
+      } else if (e.window.event == SDL_WINDOWEVENT_FOCUS_GAINED)
+        p.app->SetTrainerFocus(true);
+      else if (e.window.event == SDL_WINDOWEVENT_FOCUS_LOST)
+        p.app->SetTrainerFocus(ToolFocused() || Enabled(Flag::Background) ||
+                               SDL_GetKeyboardFocus() ==
+                                   static_cast<SDL_Window *>(p.app->mWindow));
+    } else if (e.type == SDL_MOUSEWHEEL) {
+      bool shift = SDL_GetModState() & KMOD_SHIFT;
+      p.panel->ScrollDetails(shift ? -e.wheel.y : 0, shift ? 0 : -e.wheel.y);
+    } else if (e.type == SDL_MOUSEBUTTONDOWN)
+      p.panel->DetailsClick(e.button.x, e.button.y,
+                            e.button.button == SDL_BUTTON_RIGHT ? -1 : 1);
+    else if (e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_ESCAPE)
+      p.panel->detailsOpen = false;
+    return true;
   }
   if (p.preview->mVisible &&
       id == SDL_GetWindowID(static_cast<SDL_Window *>(p.app->mWindow))) {
@@ -472,6 +558,11 @@ bool Runtime::Event(const SDL_Event &e) {
     int b = e.button.button == SDL_BUTTON_LEFT    ? 1
             : e.button.button == SDL_BUTTON_RIGHT ? -1
                                                   : 3;
+    if (b == -1) {
+      if (e.type == SDL_MOUSEBUTTONDOWN)
+        p.panel->MouseDown(e.button.x, e.button.y, b, 1);
+      break;
+    }
     if (e.type == SDL_MOUSEBUTTONDOWN)
       manager.MouseDown(e.button.x, e.button.y, b);
     else
@@ -483,7 +574,7 @@ bool Runtime::Event(const SDL_Event &e) {
     break;
   case SDL_KEYDOWN:
     if (e.key.keysym.sym == SDLK_ESCAPE) {
-      Toggle();
+      p.panel->KeyDown(Sexy::KEYCODE_ESCAPE);
       break;
     }
     manager.KeyDown(Key(e.key.keysym.sym));

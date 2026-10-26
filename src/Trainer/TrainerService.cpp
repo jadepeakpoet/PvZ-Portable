@@ -100,7 +100,8 @@ std::string ErrorChinese(const std::string &error) {
       {"Enter source path, newline, destination path",
        "请填写源路径、换行、目标路径"},
       {"Debug mode must be 0..4", "调试模式必须为 0..4"},
-      {"Speed must be 0 or 25..500 percent", "速度必须为 0 或 25..500 百分比"},
+      {"Speed must be 0 or 10..1000 percent",
+       "速度必须为 0 或 10..1000 百分比"},
       {"Invalid lineup code length", "阵型码长度无效"},
       {"Invalid base64 padding", "阵型码填充字符无效"},
       {"Invalid lineup code alphabet", "阵型码包含非法字符"},
@@ -676,8 +677,11 @@ void Service::Execute(const Command &c) {
             "Current terrain does not match");
     Require(b->mPlants.mSize + 54 <= b->mPlants.mMaxSize,
             "Plant capacity reached");
+    Require(c.value == 0 || (c.value >= 1 && c.value <= 9 &&
+                             c.extra >= c.value && c.extra <= 9),
+            "Row or column outside current board");
     for (int y = 0; y < Rows(b); ++y)
-      for (int x = 0; x < 9; ++x)
+      for (int x = c.value ? c.value - 1 : 0; x < (c.value ? c.extra : 9); ++x)
         if (b->CanPlantAt(x, y, type) == PlantingReason::PLANTING_OK)
           b->AddPlant(x, y, type);
     break;
@@ -866,8 +870,8 @@ void Service::Execute(const Command &c) {
     b->mDebugTextMode = static_cast<DebugTextMode>(c.value);
     break;
   case Action::Speed:
-    Require(c.value == 0 || (c.value >= 25 && c.value <= 500),
-            "Speed must be 0 or 25..500 percent");
+    Require(c.value == 0 || (c.value >= 10 && c.value <= 1000),
+            "Speed must be 0 or 10..1000 percent");
     paused = c.value == 0;
     if (c.value)
       speed = c.value / 100.0;

@@ -58,3 +58,26 @@ synchronous, so responsiveness for large archives is not performance-accepted.
 User requested feat/trainer-toolkit; origin/main was fetched and matches baseline
 396f1c7. Only new task commits will be pushed to the same-named feature branch.
 Usage and maintenance are documented in docs/TRAINER.md.
+
+Milestone 3: user requested original PvZ Toolkit geometry instead of the custom
+GUI. Implemented original five-page layouts, 450×275 zh / 536×280 en clients,
+named per-field menus, original defaults and direct actions, twenty spawning
+checkboxes, separate spawning-count table and mobile overlay. Language selection
+is in Utilities. Geometry reference: local upstream window.cpp and README GIFs;
+no FLTK or memory-patch implementation copied. Layout metadata has focused tests.
+First Classic integration: desktop 86/0, mobile 82/0, artifacts run-byzmaaeg and
+run-ac87uj6b. Reviewed real rendered zh/en screenshots against reference frames.
+Final interaction fixes cover popup lifetime/modal dismissal, Escape, right-click
+spawn menu, and auxiliary-window replay/visibility behavior. Device/runtime limits
+from milestone 2 still apply.
+
+Final Classic verification after interaction fixes: Release build passed;
+CTest 5/5 passed; real-engine desktop 86/0 and forced-mobile 82/0 passed.
+Graphical tests required the macOS graphical session (sandbox-only launches could
+not create an OpenGL context). No device tests claimed.
+
+Independent final UI review found and resolved desktop resize being mistaken for
+mobile embedding, and missing mobile gesture access. Embedding is now explicit;
+mobile Generate supports long-press algorithm selection, and statistics supports
+drag scrolling and long-press context menus. Added long-press integration coverage
+(mobile now 83 checks). Reference geometry and core tests remain unchanged.

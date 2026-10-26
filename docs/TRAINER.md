@@ -5,13 +5,13 @@ It reimplements the behavior of PvZ Toolkit against portable game APIs, using
 the game's Widget, ButtonWidget, EditWidget, Graphics and MemoryImage classes.
 No Windows memory patches or FLTK implementation were copied.
 
-工具箱直接编译进游戏，只操作当前游戏实例。参考 PvZ Toolkit 的功能分类，
+工具箱直接编译进游戏，只操作当前游戏实例。参考 PvZ Toolkit 的尺寸、分页与控件布局，
 通过游戏自身接口实现，不依赖进程注入或原版游戏的内存地址。
 
 ## Open and change language / 打开与切换语言
 
 - Click **Toolkit / 工具箱**, or press **F10** on desktop.
-- Click **English / 中文** at the upper right to switch immediately. The choice
+- Choose **English / 中文** from the language selector on the Utilities tab. The choice
   persists under `trainer/settings-v1.txt` in the selected save-data directory.
 - Desktop: a separate resizable window; closing it leaves the game running.
 - Mobile: an in-game modal panel. Opening pauses simulation; closing restores
@@ -19,37 +19,29 @@ No Windows memory patches or FLTK implementation were copied.
 - `-trainer` opens the toolkit after loading. `-trainer-mobile` also forces the
   mobile layout on desktop for testing.
 
-点击“工具箱”或桌面端按 F10 打开。右上角可即时切换中英文并记住选择。
+点击“工具箱”或桌面端按 F10 打开。在“杂项”页的语言下拉框切换中英文并记住选择。
 手机使用游戏内面板，打开时暂停战场，关闭后恢复先前状态；不会改动游戏语言。
 
 ## Controls / 操作
 
-The five tabs are Resources, Battlefield, Lineup, Spawning and Utilities. Use
-the left list and its page buttons/mouse wheel to select an operation. Switches
-apply immediately; numeric actions require **Apply / 应用**. Only relevant input
-fields are displayed. Actions requiring a board/profile are unavailable until
-that context exists.
+The five tabs reproduce the compact Resources, Battlefield, Lineup, Spawning
+and Utilities pages of PvZ Toolkit. Desktop client sizes are 450×275 (Chinese)
+and 536×280 (English). Native operating-system window chrome can differ.
+Each field has its own action button; switches apply immediately. Named menus
+select plants, zombies, modes and music. Rows/columns use 1-based labels, with
+“All” expanding an operation across the lawn.
 
-五页分别为资源、战场、阵型、出怪、杂项。左侧列表支持翻页和鼠标滚轮；
-开关立即生效，数值操作需点击“应用”。按钮灰色表示当前场景不可用。
+五个分页按原版控件位置排列；每项数值使用旁边的按钮执行，开关即时生效。
+植物、僵尸、模式等使用名称下拉列表。行列支持“全部”。
+免费用卡同时取消卡片冷却；“快捷布阵”进入连续放置，退出后恢复先前相关开关。
+出怪页使用 20 种僵尸复选框，右键（移动端长按）打开出怪算法菜单；“详细”打开独立统计窗口，
+右键表格可刷新、保存或加载。移动端统计使用覆盖面板，支持拖动浏览和长按菜单。
+阵型页支持阵型码编辑、复制粘贴和 YAML 条目选择。
 
-- **Types / 类型列表** selects named plants, zombies or modes. For spawning,
-  clicking zombie names adds/removes IDs in the text editor; click Done afterward.
-- Rows and columns are **1-based** in the UI. Type IDs remain **0-based**.
-  The spawn-generation form labels its red-eye limit/weight separately.
-- **Place on lawn / 点击战场放置** starts continuous placement. Click/tap cells;
-  the highlighted cell previews the target. Right-click, Escape or **Done / 完成**
-  ends placement. Switching levels cancels it.
-- The multiline text editor accepts Enter, selection, copy/paste and arrow keys.
-  Copy/Paste buttons also work on touch devices.
-- **All effects off / 关闭全部效果** resets switches and speed. It does not undo
-  changed sun/coins, created objects, cleared objects or unlocked profile progress.
-- Gameplay switches start **off** on each launch. Recording/playback hides the
-  tools and disables modifications to preserve the original input stream.
-
-类型列表可直接选择中文或英文名称；出怪页可多选。行列从 1 开始，类型编号从 0 开始。
-连续放置模式支持鼠标和触摸，切关自动退出。“关闭全部效果”不会撤销已执行的数值、
-布阵、清场和进度修改；每次启动时持续效果默认关闭。录制和回放期间禁用工具箱。
+Gameplay switches start off on each launch. Recording/playback hides the tools
+and disables modifications. Placement ends with right-click, Escape or Done;
+changing levels also cancels it. These actions do not undo prior numeric or
+profile changes.
 
 ## Feature coverage / 功能范围
 
@@ -77,15 +69,13 @@ settings and caches remain writable. Coins use the game's units of ten.
 Choose uses native dialogs on Windows/macOS, document pickers on Android/iOS,
 or Zenity when installed on Linux. Paths can also be entered manually.
 Mobile imports are copied into app-owned `trainer/imports/`. Save-folder access
-on mobile exports a ZIP of `userdata/`. Save pickers on
-mobile return a new app-local staging path; after Apply, use **Export file**
-to save/share outside the app. Directory exports are packaged as standard ZIPs.
-For PAK operations, choose a source and an output; the text editor holds the two
-paths on separate lines. Existing outputs are not overwritten.
+on mobile exports a ZIP of `userdata/`. PAK controls use separate source file
+and source directory fields, then ask for the destination. Existing outputs
+are not overwritten. Mobile results use the platform export/share flow.
 
-选择按钮调用系统文件选择器；Linux 可选 Zenity，也可手动输入路径。移动端先导入到
-应用目录；保存时先生成本地文件，再点“导出文件”调用系统导出。目录导出为 ZIP。
-PAK 操作用两行分别表示源路径和目标路径，已有目标不会被覆盖。
+选择按钮调用系统文件选择器；Linux 可选 Zenity，也可手动输入路径。
+PAK 的文件和目录分别输入，执行时选择输出位置；已有目标不会被覆盖。
+移动端存档目录导出为 ZIP。
 
 The toolkit discovers installed Unicode fonts (CoreText fallback on Apple),
 independently of English/Chinese game assets. A trusted `trainer-font.ttf`,

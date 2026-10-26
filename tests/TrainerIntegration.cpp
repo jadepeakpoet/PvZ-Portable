@@ -16,6 +16,7 @@
 #include "Trainer/TrainerFormats.h"
 #include "Trainer/TrainerRuntime.h"
 #include "Trainer/TrainerPanel.h"
+#include "Trainer/TrainerClassicLayout.h"
 #include "Trainer/TrainerFont.h"
 #include "widget/WidgetManager.h"
 #include "widget/ButtonWidget.h"
@@ -222,41 +223,91 @@ class IntegrationApp final : public LawnApp {
   auto out = std::filesystem::path(std::getenv("PVZ_TRAINER_TEST_OUT"));
   std::cout << "FONT " << Trainer::FontSource() << std::endl;
   Check(Trainer::HasChineseFont(), "installed font supports complete Chinese toolkit text");
-  s.chinese = true; s.SaveSettings(); panel.Refresh();
+  namespace C = Trainer::Classic;
+  panel.SetValue(C::Language, 0); panel.ButtonDepress(C::Language); panel.Update();
+  SDL_Delay(35); mTrainer->Pump(); panel.Update();
+  if (auto windowId = mTrainer->WindowId()) {
+   int width = 0, height = 0; SDL_GetWindowSize(SDL_GetWindowFromID(windowId), &width, &height);
+   Check(width == 450 && height == 275, "Chinese native tool window matches compact reference size");
+  }
+  Check(panel.PreferredWidth() == 450 && panel.PreferredHeight() == 275,
+        "Chinese panel uses exact compact Toolkit reference canvas");
   Check(Read(Sexy::GetAppDataPath("trainer/settings-v1.txt")).find("language 1") != std::string::npos,
         "Chinese preference persists outside original game save");
   Apply(Action::ClearPlants);
-  panel.ButtonDepress(11); panel.Refresh(); panel.ButtonDepress(100); panel.Refresh();
-  panel.ButtonDepress(215); panel.Refresh();
-  Check(mTrainer->SavePanelImage((out / "toolkit-types-zh.png").string()), "render named plant type chooser in Chinese");
-  panel.ButtonDepress(101); panel.Refresh(); panel.ButtonDepress(200); s.Tick();
+  panel.ButtonDepress(11); panel.Refresh();
+  panel.ButtonDepress(C::Plant);
+  Check(mTrainer->SavePanelImage((out / "toolkit-types-zh.png").string()),
+        "render original compact plant dropdown in Chinese");
+  panel.KeyDown(Sexy::KEYCODE_ESCAPE);
+  panel.SetValue(C::Row, 1); panel.SetValue(C::Col, 1);
+  panel.SetValue(C::Plant, int(SeedType::SEED_SUNFLOWER));
+  panel.SetValue(C::Imitater, 0); panel.ButtonDepress(C::PutPlant); s.Tick();
   auto* chosenPlant = b->GetTopPlantAt(0, 0, PlantPriority::TOPPLANT_ONLY_NORMAL_POSITION);
   Check(chosenPlant && chosenPlant->mSeedType == SeedType::SEED_SUNFLOWER &&
         chosenPlant->mImitaterType == SeedType::SEED_NONE,
-        "named type chooser applies selected sunflower rather than raw default ID");
-  panel.ButtonDepress(13); panel.Refresh(); panel.ButtonDepress(100); panel.Refresh();
-  s.text = " "; panel.Update(); s.text.clear(); panel.Update();
-  panel.ButtonDepress(215); panel.Refresh(); panel.ButtonDepress(100); panel.Refresh();
-  panel.ButtonDepress(102); panel.Refresh(); panel.ButtonDepress(215); panel.Refresh();
-  panel.ButtonDepress(200); s.Tick();
-  Check(b->mZombieAllowed[0] && b->mZombieAllowed[2] && !b->mZombieAllowed[4],
-        "named spawn chooser supports multiple selected zombie types");
+        "direct compact plant controls create selected sunflower");
+  panel.ButtonDepress(13); panel.Refresh();
+  for (int i = 0; i < 20; ++i) panel.SetValue(C::SpawnFirst + i, 0);
+  panel.ButtonDepress(C::SpawnFirst); panel.ButtonDepress(C::SpawnFirst + 2);
+  if (panel.embedded) {
+    panel.ButtonPress(C::Generate);
+    for (int i = 0; i < 40; ++i) panel.ButtonDownTick(C::Generate);
+    panel.ButtonDepress(C::Generate);
+    panel.ButtonDepress(5002);
+    Check(panel.Value(C::SpawnMode) == 2, "touch long-press opens selectable spawning algorithm menu");
+  }
+  panel.SetValue(C::SpawnMode, 1); panel.ButtonDepress(C::Generate); s.Tick();
+  bool selectedSpawnTypes = true;
+  for (int wave = 0; wave < b->mNumWaves; ++wave)
+   for (int i = 0; i < MAX_ZOMBIES_IN_WAVE; ++i) {
+    auto type = b->mZombiesInWave[wave][i];
+    selectedSpawnTypes = selectedSpawnTypes &&
+        (type == ZombieType::ZOMBIE_NORMAL || type == ZombieType::ZOMBIE_TRAFFIC_CONE ||
+         type == ZombieType::ZOMBIE_PAIL);
+   }
+  Check(panel.Value(C::SpawnFirst) == 1 && panel.Value(C::SpawnFirst + 2) == 1 && selectedSpawnTypes,
+        "classic zombie checkbox grid generates selected enemy types");
+  panel.ButtonDepress(C::Details); s.Tick();
+  Check(panel.detailsOpen && !s.text.empty(), "classic details button opens actual spawn statistics");
+  panel.KeyDown(Sexy::KEYCODE_ESCAPE);
+  for (int i = 0; i < 5; ++i) {
+   panel.ButtonDepress(10 + i); panel.Refresh();
+   Check(mTrainer->SavePanelImage((out / ("toolkit-page-zh-" + std::to_string(i) + ".png")).string()),
+         "render compact Chinese Toolkit category");
+  }
   panel.ButtonDepress(10); panel.Refresh();
   Check(mTrainer->SavePanelImage((out / "toolkit-zh.png").string()), "render Chinese toolkit panel");
-  panel.ButtonDepress(201);
-  panel.Refresh();
-  Check(!s.chinese, "language button switches to English immediately");
+  panel.SetValue(C::Language, 1); panel.ButtonDepress(C::Language); panel.Update();
+  SDL_Delay(35); mTrainer->Pump(); panel.Update();
+  if (auto windowId = mTrainer->WindowId()) {
+   int width = 0, height = 0; SDL_GetWindowSize(SDL_GetWindowFromID(windowId), &width, &height);
+   Check(width == 536 && height == 280, "English native tool window resizes to original wider geometry");
+  }
+  Check(!s.chinese && panel.PreferredWidth() == 536 && panel.PreferredHeight() == 280,
+        "language selector switches to original wider English layout");
   Check(Read(Sexy::GetAppDataPath("trainer/settings-v1.txt")).find("language 0") != std::string::npos,
-        "language button persists English preference immediately");
+        "language selector persists English preference immediately");
   Check(mTrainer->SavePanelImage((out / "toolkit-en.png").string()), "render English toolkit panel");
   for (int i = 0; i < 5; ++i) {
-   panel.ButtonDepress(10 + i);
-   Check(mTrainer->SavePanelImage((out / ("toolkit-page-" + std::to_string(i) + ".png")).string()), "render toolkit category");
+   panel.ButtonDepress(10 + i); panel.Refresh();
+   Check(mTrainer->SavePanelImage((out / ("toolkit-page-" + std::to_string(i) + ".png")).string()),
+         "render compact English Toolkit category");
   }
+  panel.ButtonDepress(10); panel.Refresh();
   auto id = mTrainer->WindowId();
   if (id) {
+   panel.SetValue(C::SunInput, 2468);
+   Sexy::ButtonWidget* sunButton = nullptr;
+   for (auto* child : panel.mWidgets)
+    if (auto* button = dynamic_cast<Sexy::ButtonWidget*>(child); button && button->mId == C::SetSun)
+     sunButton = button;
+   if (!sunButton) throw std::runtime_error("Compact sunlight button not found");
+   auto point = sunButton->GetAbsPos();
    SDL_Event click{}; click.type = SDL_MOUSEBUTTONDOWN; click.button.windowID = id;
-   click.button.button = SDL_BUTTON_LEFT; click.button.x = panel.mWidth - 180; click.button.y = 32;
+   click.button.button = SDL_BUTTON_LEFT;
+   click.button.x = point.mX + sunButton->mWidth / 2;
+   click.button.y = point.mY + sunButton->mHeight / 2;
    SDL_Event focus{}; focus.type = SDL_WINDOWEVENT; focus.window.windowID = id;
    focus.window.event = SDL_WINDOWEVENT_FOCUS_GAINED; mTrainer->Event(focus);
    SDL_Event motion{}; motion.type = SDL_MOUSEMOTION; motion.motion.windowID = id;
@@ -264,8 +315,8 @@ class IntegrationApp final : public LawnApp {
    mTrainer->Event(motion);
    Check(mTrainer->Event(click), "toolkit window consumes its own mouse press");
    click.type = SDL_MOUSEBUTTONUP;
-   mTrainer->Event(click);
-   Check(s.chinese, "real toolkit mouse routing switches language");
+   mTrainer->Event(click); s.Tick();
+   Check(b->mSunMoney == 2468, "real mouse route activates direct sunlight button");
    SDL_Event e{}; e.type = SDL_WINDOWEVENT; e.window.windowID = id; e.window.event = SDL_WINDOWEVENT_CLOSE;
    Check(mTrainer->Event(e) && !s.panelOpen && !mShutdown && !mCloseRequest, "closing second window keeps game alive");
    mTrainer->Toggle();
@@ -278,8 +329,8 @@ class IntegrationApp final : public LawnApp {
    Check(!s.mobilePause, "closing mobile panel releases only its own pause");
   }
   if (!s.panelOpen) mTrainer->Toggle();
-  panel.ButtonDepress(11); panel.Refresh(); panel.ButtonDepress(100); panel.Refresh();
-  panel.ButtonDepress(211); mTrainer->Pump();
+  panel.SetValue(C::Plant, int(SeedType::SEED_PEASHOOTER)); panel.SetValue(C::Imitater, 0);
+  panel.ButtonDepress(12); panel.Refresh(); panel.ButtonDepress(C::Quick); mTrainer->Pump();
   SDL_Event place{}; place.type = SDL_MOUSEBUTTONDOWN; place.button.button = SDL_BUTTON_LEFT;
   place.button.windowID = SDL_GetWindowID(static_cast<SDL_Window*>(mWindow));
   auto source = mWidgetManager->mMouseSourceRect;
@@ -298,6 +349,7 @@ class IntegrationApp final : public LawnApp {
   mTrainer->Event(place);
   place.type = SDL_MOUSEBUTTONDOWN; place.button.button = SDL_BUTTON_LEFT;
   Check(!mTrainer->Event(place), "normal game input resumes after leaving placement mode");
+  if (panel.Value(C::Quick)) panel.ButtonDepress(C::Quick);
   oldGeneration = s.state.generation;
   s.Submit({Action::Sun, 888});
   PreNewGame(GameMode::GAMEMODE_SURVIVAL_ENDLESS_STAGE_3, false);
@@ -305,27 +357,15 @@ class IntegrationApp final : public LawnApp {
   Check(mBoard->mSunMoney != 888 && s.state.generation != oldGeneration,
         "actual level replacement invalidates commands even when allocation reuses address");
   panel.ButtonDepress(10); panel.Refresh();
-  const Trainer::Feature* modeFeature = nullptr;
-  for (const auto& feature : Features()) if (feature.action == Action::MixMode && feature.flag < 0) modeFeature = &feature;
-  bool selectedModeFeature = false;
-  for (int attempt = 0; modeFeature && attempt < 8 && !selectedModeFeature; ++attempt) {
-   for (auto* child : panel.mWidgets) {
-    auto* button = dynamic_cast<Sexy::ButtonWidget*>(child);
-    if (button && button->mVisible && button->mId >= 100 && button->mId < 112 &&
-        button->mLabel == (s.chinese ? modeFeature->zh : modeFeature->en)) {
-     panel.ButtonDepress(button->mId); panel.Refresh(); selectedModeFeature = true; break;
-    }
-   }
-   if (!selectedModeFeature) { panel.ButtonDepress(205); panel.Refresh(); }
-  }
-  Check(selectedModeFeature, "mixed-level feature is reachable through paginated UI");
-  if (selectedModeFeature) {
-   panel.ButtonDepress(215); panel.Refresh();
-   Check(mTrainer->SavePanelImage((out / "toolkit-modes.png").string()), "render named game mode chooser");
-   panel.ButtonDepress(103); panel.Refresh(); panel.ButtonDepress(200); s.Tick();
-   Check(mGameMode == GameMode::GAMEMODE_SURVIVAL_NORMAL_STAGE_3,
-         "named mode chooser starts requested pool survival level");
-  }
+  panel.SetValue(C::Mode, int(GameMode::GAMEMODE_SURVIVAL_NORMAL_STAGE_3));
+  Check(panel.Value(C::Mode) == int(GameMode::GAMEMODE_SURVIVAL_NORMAL_STAGE_3),
+        "original mixed-mode selector retains chosen game mode");
+  panel.ButtonDepress(C::Mode);
+  Check(mTrainer->SavePanelImage((out / "toolkit-modes.png").string()), "render original game-mode dropdown");
+  panel.KeyDown(Sexy::KEYCODE_ESCAPE);
+  panel.ButtonDepress(C::Mix); s.Tick();
+  Check(mGameMode == GameMode::GAMEMODE_SURVIVAL_NORMAL_STAGE_3,
+        "direct mixed-mode button starts selected pool survival level");
   s.AllOff(); s.paused = false;
  }
 public:
