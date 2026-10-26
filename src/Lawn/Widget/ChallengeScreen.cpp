@@ -19,6 +19,7 @@
  * along with PvZ-Portable. If not, see <https://www.gnu.org/licenses/>.
  */
 
+#include "Trainer/Trainer.h"
 #include "GameButton.h"
 #include "../../LawnApp.h"
 #include "../System/Music.h"
@@ -367,8 +368,8 @@ void ChallengeScreen::UpdateButtons()
 	{
 		ButtonWidget* aPageButton = mPageButton[aPage].get();
 
-		if (mLimboPageUnlocked && aPage == CHALLENGE_PAGE_LIMBO)
-			aPageButton->mVisible = true;
+		if (aPage == CHALLENGE_PAGE_LIMBO)
+			aPageButton->mVisible = mLimboPageUnlocked || ShowPageButtons() || Trainer::Enabled(Trainer::Flag::Limbo);
 
 		if (aPage == mPageIndex)
 		{
@@ -592,6 +593,9 @@ void ChallengeScreen::Draw(Graphics* g)
 
 void ChallengeScreen::Update()
 {
+	if (mPageButton[CHALLENGE_PAGE_LIMBO]->mVisible !=
+		(mLimboPageUnlocked || ShowPageButtons() || Trainer::Enabled(Trainer::Flag::Limbo)))
+		UpdateButtons();
 	Widget::Update();
 	UpdateToolTip();
 

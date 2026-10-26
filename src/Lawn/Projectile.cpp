@@ -19,6 +19,7 @@
  * along with PvZ-Portable. If not, see <https://www.gnu.org/licenses/>.
  */
 
+#include "Trainer/Trainer.h"
 #include "Board.h"
 #include "Plant.h"
 #include "Zombie.h"
@@ -312,7 +313,8 @@ void Projectile::CheckForCollision()
 		if (aPlant)
 		{
 			const ProjectileDefinition& aProjectileDef = GetProjectileDef();
-			aPlant->mPlantHealth -= aProjectileDef.mDamage;
+			if (!Trainer::Enabled(Trainer::Flag::PlantInvincible))
+				aPlant->mPlantHealth -= Trainer::Enabled(Trainer::Flag::PlantWeak) ? aPlant->mPlantHealth + 1 : aProjectileDef.mDamage;
 			aPlant->mEatenFlashCountdown = std::max(aPlant->mEatenFlashCountdown, 25);
 
 			mApp->PlayFoley(FoleyType::FOLEY_SPLAT);
@@ -614,7 +616,8 @@ void Projectile::UpdateLobMotion()
 		}
 		else
 		{
-			aPlant->mPlantHealth -= GetProjectileDef().mDamage;
+			if (!Trainer::Enabled(Trainer::Flag::PlantInvincible))
+				aPlant->mPlantHealth -= Trainer::Enabled(Trainer::Flag::PlantWeak) ? aPlant->mPlantHealth + 1 : GetProjectileDef().mDamage;
 			aPlant->mEatenFlashCountdown = std::max(aPlant->mEatenFlashCountdown, 25);
 			mApp->PlayFoley(FoleyType::FOLEY_SPLAT);
 			Die();

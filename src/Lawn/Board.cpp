@@ -19,6 +19,7 @@
  * along with PvZ-Portable. If not, see <https://www.gnu.org/licenses/>.
  */
 
+#include "Trainer/Trainer.h"
 #include <time.h>
 #include <algorithm>
 #include <SDL.h>
@@ -2692,6 +2693,16 @@ PlantingReason Board::CanPlantAt(int theGridX, int theGridY, SeedType theSeedTyp
 		return PlantingReason::PLANTING_NOT_HERE;
 	}
 
+	// Keep coordinates bounded even when bypassing terrain/occupancy restrictions.
+	if (Trainer::Enabled(Trainer::Flag::Anywhere) &&
+		mApp->mGameMode != GameMode::GAMEMODE_CHALLENGE_ZEN_GARDEN)
+	{
+		if (theGridY >= (StageHas6Rows() ? 6 : 5) ||
+			(theSeedType == SeedType::SEED_COBCANNON && theGridX >= MAX_GRID_SIZE_X - 1))
+			return PlantingReason::PLANTING_NOT_HERE;
+		return PlantingReason::PLANTING_OK;
+	}
+
 	PlantingReason aReason = mChallenge->CanPlantAt(theGridX, theGridY, theSeedType);
 	if (aReason != PlantingReason::PLANTING_OK || Challenge::IsZombieSeedType(theSeedType))
 	{
@@ -4020,7 +4031,8 @@ void Board::MouseDownWithTool(int x, int y, int theClickCount, CursorType theCur
 		}
 	}
 
-	ClearCursor();
+	if (theCursorType != CursorType::CURSOR_TYPE_SHOVEL || !Trainer::Enabled(Trainer::Flag::LockShovel))
+		ClearCursor();
 }
 
 Plant* Board::SpecialPlantHitTest(int x, int y)
@@ -4282,7 +4294,7 @@ void Board::PickUpTool(GameObjectType theObjectType)
 		break;
 
 	case GameObjectType::OBJECT_TYPE_FERTILIZER:
-		if (mApp->mPlayerInfo->mPurchases[StoreItem::STORE_ITEM_FERTILIZER] > PURCHASE_COUNT_OFFSET)
+		if (mApp->mPlayerInfo->mPurchases[StoreItem::STORE_ITEM_FERTILIZER] > PURCHASE_COUNT_OFFSET || Trainer::Enabled(Trainer::Flag::Fertilizer))
 		{
 			mCursorObject->mCursorType = CursorType::CURSOR_TYPE_FERTILIZER;
 			mApp->PlayFoley(FoleyType::FOLEY_DROP);
@@ -4294,7 +4306,7 @@ void Board::PickUpTool(GameObjectType theObjectType)
 		break;
 
 	case GameObjectType::OBJECT_TYPE_BUG_SPRAY:
-		if (mApp->mPlayerInfo->mPurchases[StoreItem::STORE_ITEM_BUG_SPRAY] > PURCHASE_COUNT_OFFSET)
+		if (mApp->mPlayerInfo->mPurchases[StoreItem::STORE_ITEM_BUG_SPRAY] > PURCHASE_COUNT_OFFSET || Trainer::Enabled(Trainer::Flag::BugSpray))
 		{
 			mCursorObject->mCursorType = CursorType::CURSOR_TYPE_BUG_SPRAY;
 			mApp->PlayFoley(FoleyType::FOLEY_DROP);
@@ -4311,7 +4323,7 @@ void Board::PickUpTool(GameObjectType theObjectType)
 		break;
 
 	case GameObjectType::OBJECT_TYPE_CHOCOLATE:
-		if (mApp->mPlayerInfo->mPurchases[StoreItem::STORE_ITEM_CHOCOLATE] > PURCHASE_COUNT_OFFSET)
+		if (mApp->mPlayerInfo->mPurchases[StoreItem::STORE_ITEM_CHOCOLATE] > PURCHASE_COUNT_OFFSET || Trainer::Enabled(Trainer::Flag::Chocolate))
 		{
 			mCursorObject->mCursorType = CursorType::CURSOR_TYPE_CHOCOLATE;
 			mApp->PlayFoley(FoleyType::FOLEY_DROP);
@@ -4340,7 +4352,7 @@ void Board::PickUpTool(GameObjectType theObjectType)
 	case GameObjectType::OBJECT_TYPE_TREE_FOOD:
 		if (mChallenge->TreeOfWisdomCanFeed())
 		{
-			if (mApp->mPlayerInfo->mPurchases[StoreItem::STORE_ITEM_TREE_FOOD] > PURCHASE_COUNT_OFFSET)
+			if (mApp->mPlayerInfo->mPurchases[StoreItem::STORE_ITEM_TREE_FOOD] > PURCHASE_COUNT_OFFSET || Trainer::Enabled(Trainer::Flag::TreeFood))
 			{
 				mCursorObject->mCursorType = CursorType::CURSOR_TYPE_TREE_FOOD;
 				mApp->PlayFoley(FoleyType::FOLEY_DROP);
@@ -5234,6 +5246,8 @@ void Board::NextWaveComing()
 
 void Board::UpdateZombieSpawning()
 {
+	if (Trainer::Enabled(Trainer::Flag::StopSpawning))
+		return;
 	if (mApp->mGameMode == GameMode::GAMEMODE_UPSELL || mApp->mGameMode == GameMode::GAMEMODE_INTRO)
 		return;
 
@@ -7319,6 +7333,8 @@ void Board::UpdateFog()
 
 void Board::DrawFog(Graphics* g)
 {
+	if (Trainer::Enabled(Trainer::Flag::NoFog))
+		return;
 	bool aIs3DAccelerated = mApp->Is3DAccelerated();
 	Image* aImageFog = aIs3DAccelerated ? Sexy::IMAGE_FOG : Sexy::IMAGE_FOG_SOFTWARE;
 	// the fog animation uses 900- and 500-frame periods; mod by their lcm (4500) to avoid float precision loss on large counters
@@ -8432,8 +8448,9 @@ void Board::KeyChar(char theChar)
 
 void Board::AddSunMoney(int theAmount)
 {
-	mSunMoney += theAmount;
-	mSunMoney = std::min(mSunMoney, 9990);
+	// Widen the addition before clamping: unlimited sun must not overflow int.
+	const int aLimit = Trainer::Enabled(Trainer::Flag::SunLimit) ? INT_MAX : 9990;
+	mSunMoney = static_cast<int>(std::clamp<int64_t>(static_cast<int64_t>(mSunMoney) + theAmount, INT_MIN, aLimit));
 	if (mSunMoney >= 8000)
 		ReportAchievement::GiveAchievement(mApp, SunnyDays, true);
 }
@@ -8470,6 +8487,8 @@ int Board::CountCoinsBeingCollected()
 
 bool Board::TakeSunMoney(int theAmount)
 {
+	if (Trainer::Enabled(Trainer::Flag::FreePlanting))
+		return true;
 	if (CanTakeSunMoney(theAmount))
 	{
 		mSunMoney -= theAmount;
@@ -8483,7 +8502,8 @@ bool Board::TakeSunMoney(int theAmount)
 
 bool Board::CanTakeSunMoney(int theAmount)
 {
-	return theAmount <= mSunMoney + CountSunBeingCollected();
+	return Trainer::Enabled(Trainer::Flag::FreePlanting) ||
+		static_cast<int64_t>(theAmount) <= static_cast<int64_t>(mSunMoney) + CountSunBeingCollected();
 }
 
 void Board::ProcessDeleteQueue()
@@ -8953,6 +8973,8 @@ bool GetCircleRectOverlap(int theCircleX, int theCircleY, int theRadius, const R
 
 void Board::KillAllPlantsInRadius(int theX, int theY, int theRadius)
 {
+	if (Trainer::Enabled(Trainer::Flag::PlantInvincible))
+		return;
 	for (Plant* aPlant : mPlants)
 	{
 		if (aPlant->mDead)
@@ -9035,6 +9057,8 @@ int Board::GetGraveStoneCount()
 
 void Board::DropLootPiece(int thePosX, int thePosY, int theDropFactor)
 {
+	if (Trainer::Enabled(Trainer::Flag::NoLoot))
+		return;
 	if (mApp->IsFirstTimeAdventureMode())
 	{
 		if (mLevel == 22 && mCurrentWave > 5 && !mApp->mPlayerInfo->mHasUnlockedMinigames && CountCoinByType(CoinType::COIN_PRESENT_MINIGAMES) == 0)
@@ -9153,6 +9177,8 @@ void Board::DropLootPiece(int thePosX, int thePosY, int theDropFactor)
 
 bool Board::CanDropLoot()
 {
+	if (Trainer::Enabled(Trainer::Flag::NoLoot))
+		return false;
 	return !mCutScene->ShouldRunUpsellBoard() && (!mApp->IsFirstTimeAdventureMode() || mLevel >= 11);
 }
 
@@ -9275,6 +9301,8 @@ void Board::UpdateGridItems()
 
 bool Board::PlantingRequirementsMet(SeedType theSeedType)
 {
+	if (Trainer::Enabled(Trainer::Flag::Anywhere))
+		return true;
 	switch (theSeedType)
 	{
 	case SeedType::SEED_GATLINGPEA:			return CountPlantByType(SeedType::SEED_REPEATER);
@@ -9404,13 +9432,13 @@ bool Board::CanUseGameObject(GameObjectType theGameObject)
 			mApp->mPlayerInfo->mPurchases[StoreItem::STORE_ITEM_AQUARIUM_GARDEN] ||
 			mApp->mPlayerInfo->mPurchases[StoreItem::STORE_ITEM_TREE_OF_WISDOM];
 	case GameObjectType::OBJECT_TYPE_FERTILIZER:
-		return mApp->mPlayerInfo->mPurchases[StoreItem::STORE_ITEM_FERTILIZER] > 0;
+		return mApp->mPlayerInfo->mPurchases[StoreItem::STORE_ITEM_FERTILIZER] > 0 || Trainer::Enabled(Trainer::Flag::Fertilizer);
 	case GameObjectType::OBJECT_TYPE_BUG_SPRAY:
-		return mApp->mPlayerInfo->mPurchases[StoreItem::STORE_ITEM_BUG_SPRAY] > 0;
+		return mApp->mPlayerInfo->mPurchases[StoreItem::STORE_ITEM_BUG_SPRAY] > 0 || Trainer::Enabled(Trainer::Flag::BugSpray);
 	case GameObjectType::OBJECT_TYPE_PHONOGRAPH:
 		return  mApp->mPlayerInfo->mPurchases[StoreItem::STORE_ITEM_PHONOGRAPH] > 0;
 	case GameObjectType::OBJECT_TYPE_CHOCOLATE:
-		return mApp->mPlayerInfo->mPurchases[StoreItem::STORE_ITEM_CHOCOLATE] > 0;
+		return mApp->mPlayerInfo->mPurchases[StoreItem::STORE_ITEM_CHOCOLATE] > 0 || Trainer::Enabled(Trainer::Flag::Chocolate);
 	case GameObjectType::OBJECT_TYPE_WHEELBARROW:
 		return mApp->mPlayerInfo->mPurchases[StoreItem::STORE_ITEM_WHEEL_BARROW] > 0;
 	case GameObjectType::OBJECT_TYPE_GLOVE:

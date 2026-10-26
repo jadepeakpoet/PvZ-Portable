@@ -19,6 +19,7 @@
  * along with PvZ-Portable. If not, see <https://www.gnu.org/licenses/>.
  */
 
+#include "Trainer/Trainer.h"
 #include <format>
 #include "Board.h"
 #include "Cutscene.h"
@@ -171,6 +172,8 @@ void SeedPacket::Update()
 
 	if (!mActive && mRefreshing)
 	{
+		if (Trainer::Enabled(Trainer::Flag::NoCooldown) || Trainer::Enabled(Trainer::Flag::Reload))
+			mRefreshCounter = mRefreshTime;
 		mRefreshCounter++;
 		if (mRefreshCounter > mRefreshTime)
 		{
@@ -703,7 +706,7 @@ bool SeedPacket::CanPickUp()
 
 	if (!mApp->mEasyPlantingCheat)
 	{
-		if (!mActive)
+		if (!mActive && !(mRefreshing && (Trainer::Enabled(Trainer::Flag::NoCooldown) || Trainer::Enabled(Trainer::Flag::Reload))))
 		{
 			return false;
 		}
@@ -748,7 +751,7 @@ void SeedPacket::MouseDown([[maybe_unused]] int x, [[maybe_unused]] int y, [[may
 
 	if (!mApp->mEasyPlantingCheat)
 	{
-		if (!mActive)
+		if (!mActive && !(mRefreshing && (Trainer::Enabled(Trainer::Flag::NoCooldown) || Trainer::Enabled(Trainer::Flag::Reload))))
 		{
 			mApp->PlaySample(SOUND_BUZZER);
 			if (mApp->IsFirstTimeAdventureMode() && mBoard->mLevel == 1 && mBoard->mHelpDisplayed[AdviceType::ADVICE_CLICK_ON_SUN])
@@ -1147,7 +1150,7 @@ void SeedPacket::SetPacketType(SeedType theSeedType, SeedType theImitaterType)
 void SeedBank::UpdateConveyorBelt()
 {
 	mConveyorBeltCounter++;
-	if (mConveyorBeltCounter % CONVEYOR_SPEED == 0)
+	if (Trainer::Enabled(Trainer::Flag::FastBelt) || mConveyorBeltCounter % CONVEYOR_SPEED == 0)
 	{
 		for (int i = 0; i < mNumPackets; i++)
 		{

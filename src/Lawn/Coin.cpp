@@ -19,6 +19,7 @@
  * along with PvZ-Portable. If not, see <https://www.gnu.org/licenses/>.
  */
 
+#include "Trainer/Trainer.h"
 #include "Coin.h"
 #include "Board.h"
 #include <algorithm>
@@ -734,6 +735,10 @@ void Coin::Update()
 	{
 		return;
 	}
+
+	if (!mDead && !mIsBeingCollected && (IsSun() || IsMoney()) &&
+		Trainer::Enabled(Trainer::Flag::AutoCollect))
+		Collect();
 
 	if (mFadeCount != 0)
 	{

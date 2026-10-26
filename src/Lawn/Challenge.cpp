@@ -19,6 +19,7 @@
  * along with PvZ-Portable. If not, see <https://www.gnu.org/licenses/>.
  */
 
+#include "Trainer/Trainer.h"
 #include "Coin.h"
 #include "Board.h"
 #include "LawnCommon.h"
@@ -1381,6 +1382,8 @@ void Challenge::UpdateConveyorBelt()
 		return;
 
 	mBoard->mSeedBank->UpdateConveyorBelt();
+	if (Trainer::Enabled(Trainer::Flag::FastBelt))
+		mConveyorBeltCounter = std::min(mConveyorBeltCounter, 1);
 	mConveyorBeltCounter--;
 	if (mConveyorBeltCounter > 0)
 		return;
@@ -5103,7 +5106,8 @@ void Challenge::TreeOfWisdomFertilize()
 	aTreeFood->mGridItemState = GRIDITEM_STATE_ZEN_TOOL_FERTILIZER;
 
 	mApp->PlayFoley(FOLEY_FERTILIZER);
-	mApp->mPlayerInfo->mPurchases[STORE_ITEM_TREE_FOOD]--;
+	if (!Trainer::Enabled(Trainer::Flag::TreeFood))
+		mApp->mPlayerInfo->mPurchases[STORE_ITEM_TREE_FOOD]--;
 	mChallengeState = STATECHALLENGE_NORMAL;
 	mBoard->ClearCursor();
 }

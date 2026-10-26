@@ -26,6 +26,7 @@
 //#define SEXY_PERF_ENABLED
 //#define SEXY_MEMTRACE
 
+#include "Trainer/Trainer.h"
 #include <string>
 #include <string_view>
 #include <fstream>
@@ -1363,8 +1364,29 @@ void SexyAppBase::ReadFromRegistry()
 		RegistryWriteInteger("InProgress", 1);
 }
 
+namespace
+{
+// Compare path components, not substrings: a resource filename containing
+// "userdata" must not accidentally become read-only.
+bool TrainerProtectsSave(const std::string& path)
+{
+	if (!Trainer::SuppressWrites()) return false;
+	std::error_code ec;
+	auto target = std::filesystem::absolute(Sexy::PathFromU8(path), ec).lexically_normal();
+	if (ec) return false;
+	auto root = std::filesystem::absolute(Sexy::PathFromU8(Sexy::GetAppDataPath("userdata")), ec).lexically_normal();
+	if (ec) return false;
+	auto r = root.begin(), t = target.begin();
+	for (; r != root.end(); ++r, ++t)
+		if (t == target.end() || *r != *t) return false;
+	return true;
+}
+}
+
 bool SexyAppBase::WriteBytesToFile(const std::string& theFileName, const void *theData, unsigned long theDataLen)
 {
+	if (TrainerProtectsSave(theFileName))
+		return true;
 	if ((mPlayingDemoBuffer) && IsOnPrimaryThread())
 	{
 		if (mManualShutdown)
@@ -1534,6 +1556,8 @@ bool SexyAppBase::FileExists(const std::string& theFileName)
 
 bool SexyAppBase::EraseFile(const std::string& theFileName)
 {
+	if (TrainerProtectsSave(theFileName))
+		return true;
 	if (mPlayingDemoBuffer)
 		return true;
 

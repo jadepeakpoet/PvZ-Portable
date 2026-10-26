@@ -19,6 +19,7 @@
  * along with PvZ-Portable. If not, see <https://www.gnu.org/licenses/>.
  */
 
+#include "Trainer/Trainer.h"
 #include <cstdint>
 #include <time.h>
 #include "Plant.h"
@@ -925,7 +926,7 @@ void ZenGarden::MouseDownWithFeedingTool(int x, int y, CursorType theCursorType)
 
 	if (theCursorType == CursorType::CURSOR_TYPE_CHOCOLATE)
 	{
-		PVZP_ASSERT(mApp->mPlayerInfo->mPurchases[StoreItem::STORE_ITEM_CHOCOLATE] > PURCHASE_COUNT_OFFSET);
+		PVZP_ASSERT((mApp->mPlayerInfo->mPurchases[StoreItem::STORE_ITEM_CHOCOLATE] > PURCHASE_COUNT_OFFSET || Trainer::Enabled(Trainer::Flag::Chocolate)));
 
 		GridItem* aStinky = GetStinky();
 		if (aStinky && aStinky->mHighlighted)
@@ -933,7 +934,8 @@ void ZenGarden::MouseDownWithFeedingTool(int x, int y, CursorType theCursorType)
 			WakeStinky();
 			mApp->AddPvzpParticle(aStinky->mPosX + 40.0f, aStinky->mPosY + 40.0f, aStinky->mRenderOrder + 1, ParticleEffect::PARTICLE_PRESENT_PICKUP);
 			mApp->mPlayerInfo->mLastStinkyChocolateTime = static_cast<uint32_t>(mNowTime);
-			mApp->mPlayerInfo->mPurchases[StoreItem::STORE_ITEM_CHOCOLATE]--;
+			if (!Trainer::Enabled(Trainer::Flag::Chocolate))
+				mApp->mPlayerInfo->mPurchases[StoreItem::STORE_ITEM_CHOCOLATE]--;
 
 			mApp->PlayFoley(FoleyType::FOLEY_WAKEUP);
 			mApp->PlaySample(SOUND_MINDCONTROLLED);
@@ -941,7 +943,8 @@ void ZenGarden::MouseDownWithFeedingTool(int x, int y, CursorType theCursorType)
 
 		if (aPlantToFeed)
 		{
-			mApp->mPlayerInfo->mPurchases[StoreItem::STORE_ITEM_CHOCOLATE]--;
+			if (!Trainer::Enabled(Trainer::Flag::Chocolate))
+				mApp->mPlayerInfo->mPurchases[StoreItem::STORE_ITEM_CHOCOLATE]--;
 			FeedChocolateToPlant(aPlantToFeed);
 			mApp->PlayFoley(FoleyType::FOLEY_WAKEUP);
 		}
@@ -986,8 +989,9 @@ void ZenGarden::MouseDownWithFeedingTool(int x, int y, CursorType theCursorType)
 			aZenTool->mGridItemState = GridItemState::GRIDITEM_STATE_ZEN_TOOL_FERTILIZER;
 			mApp->PlayFoley(FoleyType::FOLEY_FERTILIZER);
 
-			PVZP_ASSERT(mApp->mPlayerInfo->mPurchases[StoreItem::STORE_ITEM_FERTILIZER] > PURCHASE_COUNT_OFFSET);
-			mApp->mPlayerInfo->mPurchases[StoreItem::STORE_ITEM_FERTILIZER]--;
+			PVZP_ASSERT((mApp->mPlayerInfo->mPurchases[StoreItem::STORE_ITEM_FERTILIZER] > PURCHASE_COUNT_OFFSET || Trainer::Enabled(Trainer::Flag::Fertilizer)));
+			if (!Trainer::Enabled(Trainer::Flag::Fertilizer))
+				mApp->mPlayerInfo->mPurchases[StoreItem::STORE_ITEM_FERTILIZER]--;
 		}
 		else if (theCursorType == CursorType::CURSOR_TYPE_BUG_SPRAY)
 		{
@@ -997,8 +1001,9 @@ void ZenGarden::MouseDownWithFeedingTool(int x, int y, CursorType theCursorType)
 			aZenTool->mGridItemState = GridItemState::GRIDITEM_STATE_ZEN_TOOL_BUG_SPRAY;
 			mApp->PlayFoley(FoleyType::FOLEY_BUGSPRAY);
 
-			PVZP_ASSERT(mApp->mPlayerInfo->mPurchases[StoreItem::STORE_ITEM_BUG_SPRAY] > PURCHASE_COUNT_OFFSET);
-			mApp->mPlayerInfo->mPurchases[StoreItem::STORE_ITEM_BUG_SPRAY]--;
+			PVZP_ASSERT((mApp->mPlayerInfo->mPurchases[StoreItem::STORE_ITEM_BUG_SPRAY] > PURCHASE_COUNT_OFFSET || Trainer::Enabled(Trainer::Flag::BugSpray)));
+			if (!Trainer::Enabled(Trainer::Flag::BugSpray))
+				mApp->mPlayerInfo->mPurchases[StoreItem::STORE_ITEM_BUG_SPRAY]--;
 		}
 		else if (theCursorType == CursorType::CURSOR_TYPE_PHONOGRAPH)
 		{

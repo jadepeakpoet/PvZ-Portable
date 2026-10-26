@@ -19,6 +19,7 @@
  * along with PvZ-Portable. If not, see <https://www.gnu.org/licenses/>.
  */
 
+#include "Trainer/Trainer.h"
 #include "Coin.h"
 #include "Plant.h"
 #include "Board.h"
@@ -531,6 +532,8 @@ int Plant::CalcRenderOrder()
 
 void Plant::SetSleeping(bool theIsAsleep)
 {
+	if (Trainer::Enabled(Trainer::Flag::Awake))
+		theIsAsleep = false;
 	if (mIsAsleep == theIsAsleep || NotOnGround())
 		return;
 
@@ -649,7 +652,8 @@ void Plant::SpikeRockTakeDamage()
 
 	SpikeweedAttack();
 
-	mPlantHealth -= 50;
+	if (!Trainer::Enabled(Trainer::Flag::PlantInvincible))
+		mPlantHealth -= Trainer::Enabled(Trainer::Flag::PlantWeak) ? mPlantHealth : 50;
 	if (mPlantHealth <= 300)
 	{
 		aBodyReanim->AssignRenderGroupToTrack("bigspike3", RENDER_GROUP_HIDDEN);
@@ -796,7 +800,7 @@ bool Plant::FindTargetAndFire(int theRow, PlantWeapon thePlantWeapon)
 		case SeedType::SEED_WINTERMELON:    mShootingCounter = 36;  break;
 		case SeedType::SEED_KERNELPULT:
 		{
-			if (Sexy::Rand(4) == 0)
+			if (Trainer::Enabled(Trainer::Flag::Butter) || Sexy::Rand(4) == 0)
 			{
 				aBodyReanim = mApp->ReanimationGet(mBodyReanimID);
 				aBodyReanim->AssignRenderGroupToPrefix("Cornpult_butter", RENDER_GROUP_NORMAL);
@@ -1075,6 +1079,8 @@ void Plant::UpdateProductionPlant()
 
 void Plant::UpdateSunShroom()
 {
+	if (mState == PlantState::STATE_SUNSHROOM_SMALL && Trainer::Enabled(Trainer::Flag::Reload))
+		mStateCountdown = 0;
 	Reanimation* aBodyReanim = mApp->ReanimationGet(mBodyReanimID);
 	if (mState == PlantState::STATE_SUNSHROOM_SMALL)
 	{
@@ -1144,6 +1150,8 @@ void Plant::PlayBodyReanim(const char* theTrackName, ReanimLoopType theLoopType,
 
 void Plant::UpdatePotato()
 {
+	if (mState == PlantState::STATE_NOTREADY && Trainer::Enabled(Trainer::Flag::Reload))
+		mStateCountdown = 0;
 	Reanimation* aBodyReanim = mApp->ReanimationGet(mBodyReanimID);
 
 	if (mState == PlantState::STATE_NOTREADY)
@@ -1667,6 +1675,13 @@ void Plant::UpdateUmbrella()
 
 void Plant::UpdateCobCannon()
 {
+	if (Trainer::Enabled(Trainer::Flag::Reload) &&
+		(mState == PlantState::STATE_COBCANNON_ARMING || mState == PlantState::STATE_COBCANNON_LOADING))
+	{
+		mStateCountdown = 0;
+		mState = PlantState::STATE_COBCANNON_READY;
+		PlayIdleAnim(12.0f);
+	}
 	if (mState == PlantState::STATE_COBCANNON_ARMING)
 	{
 		if (mStateCountdown == 0)
@@ -1750,6 +1765,8 @@ void Plant::UpdateCactus()
 
 void Plant::UpdateChomper()
 {
+	if (mState == PlantState::STATE_CHOMPER_DIGESTING && Trainer::Enabled(Trainer::Flag::Reload))
+		mStateCountdown = 0;
 	Reanimation* aBodyReanim = mApp->ReanimationTryToGet(mBodyReanimID);
 	if (mState == PlantState::STATE_READY)
 	{
@@ -2319,6 +2336,8 @@ void Plant::RemoveEffects()
 
 void Plant::Squish()
 {
+	if (Trainer::Enabled(Trainer::Flag::PlantInvincible))
+		return;
 	if (NotOnGround())
 		return;
 
@@ -2854,6 +2873,8 @@ void Plant::UpdateReanim()
 
 void Plant::Update()
 {
+	if (mIsAsleep && Trainer::Enabled(Trainer::Flag::Awake))
+		SetSleeping(false);
 	bool doUpdate = false;
 	if (IsOnBoard() && mApp->mGameScene == GameScenes::SCENE_LEVEL_INTRO && mApp->IsWallnutBowlingLevel())
 		doUpdate = true;
@@ -4259,7 +4280,7 @@ void Plant::BlowAwayFliers()
 {
 	for (Zombie* aZombie : mBoard->mZombies)
 	{
-		if (aZombie->mDead)
+		if (aZombie->mDead || Trainer::Enabled(Trainer::Flag::ZombieInvincible))
 			continue;
 		if (!aZombie->IsDeadOrDying())
 		{
@@ -4279,7 +4300,7 @@ void Plant::KillAllPlantsNearDoom()
 {
 	for (Plant* aPlant : mBoard->mPlants)
 	{
-		if (aPlant->mDead)
+		if (aPlant->mDead || (aPlant != this && Trainer::Enabled(Trainer::Flag::PlantInvincible)))
 			continue;
 		if (aPlant->mRow == mRow && aPlant->mPlantCol == mPlantCol)
 		{
@@ -4327,7 +4348,8 @@ void Plant::DoSpecial()
 		KillAllPlantsNearDoom();
 
 		mApp->AddPvzpParticle(aPosX, aPosY, static_cast<int>(RenderLayer::RENDER_LAYER_TOP), ParticleEffect::PARTICLE_DOOM);
-		mBoard->AddACrater(mPlantCol, mRow)->mGridItemCounter = 18000;
+		if (!Trainer::Enabled(Trainer::Flag::NoCrater))
+			mBoard->AddACrater(mPlantCol, mRow)->mGridItemCounter = 18000;
 		mBoard->ShakeBoard(3, -4);
 
 		Die();

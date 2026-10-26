@@ -19,6 +19,7 @@
  * along with PvZ-Portable. If not, see <https://www.gnu.org/licenses/>.
  */
 
+#include "Trainer/Trainer.h"
 #include <climits>
 #include <format>
 
@@ -2030,6 +2031,8 @@ void Zombie::UpdateZombieSnorkel()
 
 void Zombie::UpdateZombieJackInTheBox()
 {
+	if (Trainer::Enabled(Trainer::Flag::NoExplode))
+		return;
 	if (mZombiePhase == ZombiePhase::PHASE_JACK_IN_THE_BOX_RUNNING)
 	{
 		if (mPhaseCounter <= 0 && mHasHead)
@@ -2390,6 +2393,8 @@ void Zombie::BurnRow(int theRow)  // only used by the DO_FIX_BUGS jalapeno zombi
 
 void Zombie::UpdateZombieJalapenoHead()
 {
+	if (Trainer::Enabled(Trainer::Flag::NoExplode))
+		return;
 	if (!mHasHead)
 		return;
 
@@ -2409,7 +2414,7 @@ void Zombie::UpdateZombieJalapenoHead()
 		{
 			for (Plant* aPlant : mBoard->mPlants)
 			{
-				if (aPlant->mDead)
+				if (aPlant->mDead || Trainer::Enabled(Trainer::Flag::PlantInvincible))
 					continue;
 				//Rect aPlantRect = aPlant->GetPlantRect();
 				if (aPlant->mRow == mRow && !aPlant->NotOnGround())
@@ -2422,7 +2427,7 @@ void Zombie::UpdateZombieJalapenoHead()
 #else
 		for (Plant* aPlant : mBoard->mPlants)
 		{
-			if (aPlant->mDead)
+			if (aPlant->mDead || Trainer::Enabled(Trainer::Flag::PlantInvincible))
 				continue;
 			//Rect aPlantRect = aPlant->GetPlantRect();
 			if (aPlant->mRow == mRow && !aPlant->NotOnGround())
@@ -4031,6 +4036,9 @@ void Zombie::UpdateZamboni()
 		mVelX -= 0.0005f;
 	}
 
+	if (Trainer::Enabled(Trainer::Flag::NoIce))
+		return;
+
 	int anIceX = mPosX + 118;
 	if (mBoard->StageHasRoof())
 	{
@@ -4250,6 +4258,8 @@ void Zombie::CheckForZombieStep()
 
 void Zombie::UpdateZombiePosition()
 {
+	if (IsOnBoard() && Trainer::Enabled(Trainer::Flag::StopZombies))
+		return;
 	if (mZombieType == ZombieType::ZOMBIE_BUNGEE || mZombieType == ZombieType::ZOMBIE_BOSS ||
 		mZombiePhase == ZombiePhase::PHASE_RISING_FROM_GRAVE || mZombieHeight == ZombieHeight::HEIGHT_ZOMBIQUARIUM)
 		return;
@@ -4304,6 +4314,8 @@ void Zombie::UpdateBurn()
 void Zombie::Update()
 {
 	PVZP_ASSERT(!mDead);
+	const bool aLockPosition = IsOnBoard() && !IsDeadOrDying() && Trainer::Enabled(Trainer::Flag::StopZombies);
+	const float aPreviousX = mPosX;
 
 	mZombieAge++;
 	bool doUpdate = false;
@@ -4386,6 +4398,10 @@ void Zombie::Update()
 			}
 		}
 
+		// Special vault/digger motion bypasses UpdateZombiePosition. Keep its
+		// horizontal position fixed too, while allowing actions/death to update.
+		if (aLockPosition && !IsDeadOrDying())
+			mPosX = aPreviousX;
 		mX = static_cast<int>(mPosX);
 		mY = static_cast<int>(mPosY);
 
@@ -6983,6 +6999,8 @@ void Zombie::CheckForHighGround()
 
 void Zombie::StartMindControlled()
 {
+	if (Trainer::Enabled(Trainer::Flag::ZombieInvincible))
+		return;
 	mApp->PlaySample(SOUND_MINDCONTROLLED);
 	mMindControlled = true;
 	mLastPortalX = -1;
@@ -7096,7 +7114,9 @@ void Zombie::EatPlant(Plant* thePlant)
 		}
 	}
 
-	thePlant->mPlantHealth -= DAMAGE_PER_EAT;
+	if (Trainer::Enabled(Trainer::Flag::PlantInvincible))
+		return;
+	thePlant->mPlantHealth -= Trainer::Enabled(Trainer::Flag::PlantWeak) ? thePlant->mPlantHealth : DAMAGE_PER_EAT;
 	thePlant->mRecentlyEatenCountdown = 50;
 	if (mApp->IsIZombieLevel() && mJustGotShotCounter < -500)
 	{
@@ -7599,6 +7619,8 @@ void Zombie::DropShield(unsigned int theDamageFlags)
 
 int Zombie::TakeShieldDamage(int theDamage, unsigned int theDamageFlags)
 {
+	if (Trainer::Enabled(Trainer::Flag::ZombieInvincible))
+		return 0;
 	if (!TestBit(theDamageFlags, static_cast<int>(DamageFlags::DAMAGE_DOESNT_CAUSE_FLASH)))
 	{
 		mShieldJustGotShotCounter = 25;
@@ -7716,6 +7738,8 @@ void Zombie::DropHelm(unsigned int theDamageFlags)
 
 int Zombie::TakeHelmDamage(int theDamage, unsigned int theDamageFlags)
 {
+	if (Trainer::Enabled(Trainer::Flag::ZombieInvincible))
+		return 0;
 	if (!TestBit(theDamageFlags, static_cast<int>(DamageFlags::DAMAGE_DOESNT_CAUSE_FLASH)))
 	{
 		mJustGotShotCounter = 25;
@@ -7969,6 +7993,10 @@ void Zombie::TakeBodyDamage(int theDamage, unsigned int theDamageFlags)
 
 void Zombie::TakeDamage(int theDamage, unsigned int theDamageFlags)
 {
+	if (Trainer::Enabled(Trainer::Flag::ZombieInvincible))
+		return;
+	if (theDamage > 0 && Trainer::Enabled(Trainer::Flag::ZombieWeak))
+		theDamage = 1000000;
 	if (mZombiePhase == ZombiePhase::PHASE_JACK_IN_THE_BOX_POPPING || IsDeadOrDying())
 		return;
 
@@ -8080,6 +8108,8 @@ bool Zombie::CanBeFrozen()
 
 bool Zombie::EffectedByDamage(unsigned int theDamageRangeFlags)
 {
+	if (Trainer::Enabled(Trainer::Flag::ZombieInvincible))
+		return false;
 	if (!TestBit(theDamageRangeFlags, static_cast<int>(DamageRangeFlags::DAMAGES_DYING)) && IsDeadOrDying())
 	{
 		return false;
@@ -8557,6 +8587,8 @@ void Zombie::ApplyButter()
 
 void Zombie::MowDown()
 {
+	if (Trainer::Enabled(Trainer::Flag::ZombieInvincible))
+		return;
 	if (mDead || mZombiePhase == ZombiePhase::PHASE_ZOMBIE_MOWERED || mZombieType == ZombieType::ZOMBIE_BOSS)
 		return;
 
@@ -8660,6 +8692,8 @@ void Zombie::RemoveColdEffects()
 
 void Zombie::ApplyBurn()
 {
+	if (Trainer::Enabled(Trainer::Flag::ZombieInvincible))
+		return;
 	if (mDead || mZombiePhase == ZombiePhase::PHASE_ZOMBIE_BURNED)
 		return;
 

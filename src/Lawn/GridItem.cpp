@@ -19,6 +19,7 @@
  * along with PvZ-Portable. If not, see <https://www.gnu.org/licenses/>.
  */
 
+#include "Trainer/Trainer.h"
 #include "Board.h"
 #include "GridItem.h"
 #include "Challenge.h"
@@ -313,6 +314,7 @@ void GridItem::DrawCrater(Graphics* g)
 
 void GridItem::DrawScaryPot(Graphics* g)
 {
+	const int aTransparency = Trainer::Enabled(Trainer::Flag::SeeVase) ? 50 : mTransparentCounter;
 	int aImageCol = static_cast<int>(mGridItemState) - static_cast<int>(GridItemState::GRIDITEM_STATE_SCARY_POT_QUESTION);
 	PVZP_ASSERT(aImageCol >= 0 && aImageCol < 3);
 
@@ -320,7 +322,7 @@ void GridItem::DrawScaryPot(Graphics* g)
 	int aYPos = mBoard->GridToPixelY(mGridX, mGridY) - 15;
 	PvzpDrawImageCelCenterScaledF(g, IMAGE_PLANTSHADOW2, aXPos - 5.0f, aYPos + 72.0f, 0, 1.3f, 1.3f);
 
-	if (mTransparentCounter > 0)
+	if (aTransparency > 0)
 	{
 		g->DrawImageCel(IMAGE_SCARY_POT, aXPos, aYPos, aImageCol, 0);
 
@@ -378,7 +380,7 @@ void GridItem::DrawScaryPot(Graphics* g)
 			}
 		}
 
-		int aAlpha = PvzpAnimateCurve(0, 50, mTransparentCounter, 255, 58, PvzpCurves::CURVE_LINEAR);
+		int aAlpha = PvzpAnimateCurve(0, 50, aTransparency, 255, 58, PvzpCurves::CURVE_LINEAR);
 		g->SetColorizeImages(true);
 		g->SetColor(Color(255, 255, 255, aAlpha));
 	}
@@ -388,7 +390,7 @@ void GridItem::DrawScaryPot(Graphics* g)
 	{
 		g->SetDrawMode(Graphics::DRAWMODE_ADDITIVE);
 		g->SetColorizeImages(true);
-		if (mTransparentCounter == 0)
+		if (aTransparency == 0)
 		{
 			g->SetColor(Color(255, 255, 255, 196));
 		}
