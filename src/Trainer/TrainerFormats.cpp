@@ -229,7 +229,8 @@ void Pack(const std::filesystem::path &source,
       throw std::runtime_error("Symlinks are not supported");
     if (e.is_regular_file()) {
       auto rel = std::filesystem::relative(e.path(), source);
-      auto name = rel.generic_string();
+      auto utf8 = rel.generic_u8string();
+      std::string name(utf8.begin(), utf8.end());
       auto size = e.file_size();
       if (name.size() > 255 ||
           size > std::numeric_limits<std::uint32_t>::max() ||
@@ -243,7 +244,8 @@ void Pack(const std::filesystem::path &source,
   WriteLE(raw, 0xBAC04AC0, 4);
   WriteLE(raw, 0, 4);
   for (auto &e : entries) {
-    std::string name = e.generic_string();
+    auto utf8 = e.generic_u8string();
+    std::string name(utf8.begin(), utf8.end());
     std::replace(name.begin(), name.end(), '/', '\\');
     raw.put(0);
     raw.put(char(name.size()));
@@ -289,7 +291,7 @@ void Unpack(const std::filesystem::path &source,
     if (!in)
       throw std::runtime_error("Truncated PAK path");
     std::replace(name.begin(), name.end(), '\\', '/');
-    std::filesystem::path p(name);
+    auto p = std::filesystem::u8path(name);
     if (p.empty() || p.is_absolute() || name.find(':') != std::string::npos ||
         name.find('\0') != std::string::npos)
       throw std::runtime_error("Unsafe PAK path");

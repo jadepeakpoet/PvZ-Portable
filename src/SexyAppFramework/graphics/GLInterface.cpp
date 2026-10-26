@@ -26,6 +26,9 @@
 #include "graphics/GLPlatform.h"
 
 #include <SDL.h>
+#ifdef PVZ_TRAINER
+#include "Trainer/TrainerRuntime.h"
+#endif
 
 #include "graphics/GLInterface.h"
 #include "graphics/GLImage.h"
@@ -1356,6 +1359,11 @@ bool GLInterface::PreDraw()
 void GLInterface::Flush()
 {
 	GfxFlush();
+#ifdef PVZ_TRAINER
+#ifndef __SWITCH__
+ Trainer::BeforePresent(mApp);
+#endif
+#endif
 #ifdef __SWITCH__
 	eglSwapBuffers(mApp->mWindow, mApp->mSurface);
 #else

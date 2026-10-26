@@ -25,6 +25,10 @@
 #include <SDL.h>
 
 #include <algorithm>
+#ifdef PVZ_TRAINER
+#include "Trainer/TrainerRuntime.h"
+#include "Trainer/Trainer.h"
+#endif
 
 #include "SexyAppBase.h"
 #include "graphics/GLInterface.h"
@@ -588,8 +592,14 @@ bool SexyAppBase::ProcessDeferredMessages(bool singleMessage)
 #endif
 
 	SDL_Event event;
+#ifdef PVZ_TRAINER
+ Trainer::Pump(this);
+#endif
 	if (SDL_PollEvent(&event))
 	{
+#ifdef PVZ_TRAINER
+  if(Trainer::HandleEvent(this,event))return SDL_HasEvents(SDL_FIRSTEVENT,SDL_LASTEVENT);
+#endif
 		if ((mRecordingDemoBuffer) && (!mShutdown))
 			RecordDemoEvent(this, event);
 
@@ -660,7 +670,15 @@ bool SexyAppBase::ProcessDeferredMessages(bool singleMessage)
 
 					case SDL_WINDOWEVENT_FOCUS_GAINED:
 					case SDL_WINDOWEVENT_FOCUS_LOST:
-						mActive = event.window.event == SDL_WINDOWEVENT_FOCUS_GAINED;
+#ifdef PVZ_TRAINER
+                        if(event.window.event==SDL_WINDOWEVENT_FOCUS_LOST){mWidgetManager->DoMouseUps();mWidgetManager->LostFocus();}
+                        else mWidgetManager->GotFocus();
+#endif
+						mActive = event.window.event == SDL_WINDOWEVENT_FOCUS_GAINED
+#ifdef PVZ_TRAINER
+                         || Trainer::HasToolFocus(this) || Trainer::Enabled(Trainer::Flag::Background)
+#endif
+                         ;
 						RehupFocus();
 						break;
 

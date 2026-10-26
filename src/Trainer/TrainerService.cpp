@@ -19,7 +19,9 @@
 #include "SexyAppFramework/Common.h"
 #include "SexyAppFramework/graphics/GLInterface.h"
 #include "SexyAppFramework/graphics/Image.h"
+#include "TrainerFiles.h"
 #include "TrainerFormats.h"
+#include "widget/WidgetManager.h"
 #include <SDL.h>
 #include <algorithm>
 #include <cmath>
@@ -576,6 +578,8 @@ void Service::Execute(const Command &c) {
   case Action::Plant: {
     Cell(b, c.row, c.col);
     Require(c.value >= 0 && c.value < 48, "Plant ID must be 0..47");
+    Require(c.value != int(SeedType::SEED_COBCANNON) || c.col < 8,
+            "Row or column outside current board");
     Require(b->mPlants.mSize + 1 < b->mPlants.mMaxSize,
             "Plant capacity reached");
     auto type = static_cast<SeedType>(c.value);
@@ -840,9 +844,7 @@ void Service::Execute(const Command &c) {
     app->mMusic->MakeSureMusicIsPlaying(static_cast<MusicTune>(c.value));
     break;
   case Action::SaveFolder: {
-    auto path = std::filesystem::u8path(Sexy::GetAppDataPath(""));
-    auto url = "file://" + path.generic_string();
-    Require(SDL_OpenURL(url.c_str()) == 0,
+    Require(RevealFolder(Sexy::GetAppDataPath("userdata")),
             "Cannot open save directory on this platform");
     break;
   }
@@ -893,6 +895,7 @@ void Service::Execute(const Command &c) {
     break;
   case Action::Screenshot:
     screenshotRequested = true;
+    app->mWidgetManager->MarkAllDirty();
     messageEn = "Screenshot requested";
     messageZh = "已请求截图";
     break;

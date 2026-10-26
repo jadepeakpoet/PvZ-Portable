@@ -196,6 +196,16 @@ brew install cmake dylibbundler jpeg-turbo libopenmpt libpng ninja sdl2
 
 ## Build Instructions
 
+### Built-in Toolkit / 内置工具箱
+
+The optional bilingual toolkit is enabled by `PVZ_TRAINER` (default `ON`),
+independently of `PVZ_DEBUG`. Click **Toolkit / 工具箱** or press **F10** to open
+the desktop tool window or mobile in-game panel. Switch **English / 中文** inside
+the tool; no change to game-resource language is required.
+See [Toolkit usage and maintenance / 工具箱使用与维护](docs/TRAINER.md).
+
+Build without the toolkit using `-DPVZ_TRAINER=OFF`.
+
 Run the following commands (assuming you have CMake and other dependencies installed) where the `CMakeLists.txt` file is located:
 
 ```bash

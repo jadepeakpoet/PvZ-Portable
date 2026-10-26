@@ -49,6 +49,9 @@ class ChallengeScreen;
 class StoreScreen;
 class AlmanacDialog;
 class TypingCheck;
+#ifdef PVZ_TRAINER
+namespace Trainer { class Runtime; }
+#endif
 
 namespace Sexy
 {
@@ -72,6 +75,12 @@ public:
 class LawnApp : public SexyApp
 {
 public:
+#ifdef PVZ_TRAINER
+ std::unique_ptr<Trainer::Runtime> mTrainer;
+ bool mTrainerInitiallyOpen = false;
+ bool mTrainerMobile = false;
+ void SetTrainerFocus(bool active) { mActive=active; RehupFocus(); }
+#endif
 	Board*							mBoard;
 	std::unique_ptr<TitleScreen>	mTitleScreen;
 	std::unique_ptr<GameSelector>	mGameSelector;

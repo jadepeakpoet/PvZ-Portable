@@ -24,6 +24,9 @@
 #include <cstdio>
 #include <format>
 #include "LawnApp.h"
+#ifdef PVZ_TRAINER
+#include "Trainer/TrainerRuntime.h"
+#endif
 #include "Resources.h"
 #include "Lawn/LawnCommon.h"
 #include "Lawn/Board.h"
@@ -210,6 +213,9 @@ LawnApp::~LawnApp()
 	}
 
 	// Must die before the definition tables and allocators are freed below.
+#ifdef PVZ_TRAINER
+ mTrainer.reset();
+#endif
 	mGameSelector.reset();
 	mEffectSystem.reset();
 	mReanimatorCache.reset();
@@ -251,6 +257,9 @@ void LawnApp::ShutdownHook()
 
 void LawnApp::KillBoard()
 {
+#ifdef PVZ_TRAINER
+ if(mTrainer)mTrainer->InvalidateBoard();
+#endif
 	FinishModelessDialogs();
 	KillSeedChooserScreen();
 	if (mBoard)
@@ -1278,6 +1287,10 @@ bool LawnApp::DebugKeyDown(int theKey)
 
 void LawnApp::HandleCmdLineParam(std::string_view theParamName, std::string_view theParamValue)
 {
+#ifdef PVZ_TRAINER
+ if(theParamName=="-trainer") {mTrainerInitiallyOpen=true;return;}
+ if(theParamName=="-trainer-mobile") {mTrainerInitiallyOpen=true;mTrainerMobile=true;return;}
+#endif
 	if (theParamName == "-cheat")
 	{
 #ifdef PVZ_DEBUG
@@ -1550,6 +1563,10 @@ void LawnApp::UpdatePlayTimeStats()
 
 void LawnApp::UpdateFrames()
 {
+#ifdef PVZ_TRAINER
+ if(mLoadingThreadCompleted&&!mTrainer)mTrainer=std::make_unique<Trainer::Runtime>(this);
+ if(mTrainer)mTrainer->Tick();
+#endif
 	if ((!mActive || mMinimized) && mBoard)
 	{
 		mBoard->ResetFPSStats();
@@ -1577,6 +1594,9 @@ void LawnApp::UpdateFrames()
 		aUpdateCount = 20;
 	}
 
+#ifdef PVZ_TRAINER
+ if(mTrainer)aUpdateCount=mTrainer->UpdateCount(aUpdateCount);
+#endif
 	for (int i = 0; i < aUpdateCount; i++)
 	{
 		mAppCounter++;

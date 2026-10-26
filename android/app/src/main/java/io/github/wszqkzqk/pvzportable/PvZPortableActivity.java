@@ -42,6 +42,20 @@ import java.io.File;
 public class PvZPortableActivity extends SDLActivity {
     private static final String TAG = "PvZPortable";
     private OnBackInvokedCallback mBackCallback;
+    private volatile TrainerFiles mTrainerFiles;
+
+    // Called from SDL's game thread through JNI. The helper presents UI on the
+    // Android thread; results are polled back and applied on the game thread.
+    public void trainerChoose(int kind, long ticket) {
+        if (mTrainerFiles != null) mTrainerFiles.choose(kind, ticket);
+    }
+    public String trainerPoll() { return mTrainerFiles == null ? null : mTrainerFiles.poll(); }
+    public void trainerShare(String path) { if (mTrainerFiles != null) mTrainerFiles.share(path); }
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        if (mTrainerFiles == null || !mTrainerFiles.onResult(requestCode, resultCode, data))
+            super.onActivityResult(requestCode, resultCode, data);
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -57,6 +71,7 @@ public class PvZPortableActivity extends SDLActivity {
         }
 
         super.onCreate(savedInstanceState);
+        mTrainerFiles = new TrainerFiles(this);
         hideSystemUI();
         setupImeLayoutAdjustment();
 
