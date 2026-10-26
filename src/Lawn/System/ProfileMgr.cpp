@@ -195,6 +195,9 @@ PlayerInfo* ProfileMgr::AddProfile(const std::string& theName)
 	if (aRet.second)
 	{
 		PlayerInfo* aProfile = &aRet.first->second;
+		#ifdef PVZ_DEFAULT_UNLOCKED
+		aProfile->UnlockContent();
+		#endif
 		aProfile->mName = theName;
 		aProfile->mId = mNextProfileId++;
 		aProfile->mUseSeq = mNextProfileUseSeq++;

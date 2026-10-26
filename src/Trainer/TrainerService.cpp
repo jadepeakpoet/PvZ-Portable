@@ -540,13 +540,7 @@ void Service::Execute(const Command &c) {
     break;
   case Action::Unlock:
     Require(p, "Select a profile first");
-    p->mFinishedAdventure = std::max(p->mFinishedAdventure, 2U);
-    p->mHasUnlockedMinigames = p->mHasUnlockedPuzzleMode =
-        p->mHasUnlockedSurvivalMode = 1;
-    for (int i = 0; i < 100; ++i)
-      p->mChallengeRecords[i] = std::max(20U, p->mChallengeRecords[i]);
-    for (int i = 0; i <= int(StoreItem::STORE_ITEM_PLANT_IMITATER); ++i)
-      p->mPurchases[i] = 1;
+    p->UnlockContent();
     app->WriteCurrentUserConfig();
     if (app->mGameSelector)
       app->mGameSelector->SyncProfile(true);

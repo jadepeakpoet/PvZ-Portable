@@ -81,3 +81,12 @@ mobile embedding, and missing mobile gesture access. Embedding is now explicit;
 mobile Generate supports long-press algorithm selection, and statistics supports
 drag scrolling and long-press context menus. Added long-press integration coverage
 (mobile now 83 checks). Reference geometry and core tests remain unchanged.
+
+2026-10-27 simulator package: user requested iOS Simulator rather than real-device
+IPA. Added opt-in PVZ_DEFAULT_UNLOCKED for new profiles, shared monotonic content
+unlock routine, and iOS bundle resource fallback with Documents precedence.
+Simulator Release ARM64 build passed, CTest 5/5, desktop engine integration 88/0
+including unlock persistence and preserving existing coins/records. Package
+contains local resources and install.command under ignored build-ios-simulator;
+no game assets or machine-local dependency overlays are committed. Existing
+profiles are not automatically overwritten. Not a device IPA or device test.

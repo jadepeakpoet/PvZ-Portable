@@ -200,6 +200,18 @@ SexyAppBase::SexyAppBase()
 			mResourceDir = "";
 		}
 	}
+	// Simulator/distribution bundles can include resources; Documents overrides them.
+	if (!std::filesystem::exists(std::filesystem::path(mResourceDir) / "main.pak"))
+	{
+		char* aBundlePath = SDL_GetBasePath();
+		if (aBundlePath)
+		{
+			if (std::filesystem::exists(std::filesystem::path(aBundlePath) / "main.pak"))
+				mResourceDir = aBundlePath;
+			SDL_free(aBundlePath);
+		}
+	}
+
 #elif defined(__EMSCRIPTEN__)
 	mResourceDir = "/";
 #else

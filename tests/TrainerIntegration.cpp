@@ -376,6 +376,24 @@ public:
    if (!mTrainer || !mLoadingThreadCompleted) return;
    if (stage == 0) {
     mPlayerInfo = mProfileMgr->AddProfile("Toolkit integration");
+#ifdef PVZ_DEFAULT_UNLOCKED
+    Check(mPlayerInfo->mFinishedAdventure >= 2 && mPlayerInfo->mPurchases[STORE_ITEM_PACKET_UPGRADE] >= 4,
+          "new profile defaults to unlocked content");
+#endif
+    mPlayerInfo->mCoins = 123;
+    mPlayerInfo->mChallengeRecords[0] = 42;
+    mPlayerInfo->UnlockContent();
+    Check(mPlayerInfo->mFinishedAdventure >= 2 && mPlayerInfo->mHasUnlockedPuzzleMode &&
+          mPlayerInfo->mPurchases[STORE_ITEM_PLANT_IMITATER] &&
+          mPlayerInfo->mPurchases[STORE_ITEM_PACKET_UPGRADE] == 4 &&
+          mPlayerInfo->mPurchases[STORE_ITEM_AQUARIUM_GARDEN],
+          "unlock covers modes, plants, ten slots and garden upgrades");
+    mPlayerInfo->SaveDetails();
+    mPlayerInfo->Reset();
+    mPlayerInfo->LoadDetails();
+    Check(mPlayerInfo->mFinishedAdventure >= 2 && mPlayerInfo->mChallengeRecords[0] == 42 &&
+          mPlayerInfo->mCoins == 123 && mPlayerInfo->mPurchases[STORE_ITEM_PACKET_UPGRADE] == 4,
+          "unlocked profile persists without reducing records or replacing currency");
     mPlayerInfo->mFinishedAdventure = 2;
     mPlayerInfo->mLevel = 50;
     if (mTitleScreen) LoadingCompleted();

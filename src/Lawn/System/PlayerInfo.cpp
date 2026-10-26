@@ -298,6 +298,27 @@ void PlayerInfo::Reset()
 	mZombatarCreatedBefore = 0;
 }
 
+void PlayerInfo::UnlockContent()
+{
+	mFinishedAdventure = std::max(mFinishedAdventure, 2U);
+	mHasUnlockedMinigames = mHasUnlockedPuzzleMode = mHasUnlockedSurvivalMode = 1;
+	for (auto& record : mChallengeRecords)
+		record = std::max(record, 20U);
+	for (int i = 0; i <= StoreItem::STORE_ITEM_PLANT_IMITATER; ++i)
+		mPurchases[i] = std::max(mPurchases[i], 1U);
+	const StoreItem upgrades[] = {
+		STORE_ITEM_BONUS_LAWN_MOWER, STORE_ITEM_GOLD_WATERINGCAN,
+		STORE_ITEM_PHONOGRAPH, STORE_ITEM_GARDENING_GLOVE,
+		STORE_ITEM_MUSHROOM_GARDEN, STORE_ITEM_WHEEL_BARROW,
+		STORE_ITEM_STINKY_THE_SNAIL, STORE_ITEM_POOL_CLEANER,
+		STORE_ITEM_ROOF_CLEANER, STORE_ITEM_AQUARIUM_GARDEN,
+		STORE_ITEM_TREE_OF_WISDOM
+	};
+	for (auto item : upgrades)
+		mPurchases[item] = std::max(mPurchases[item], 1U);
+	mPurchases[STORE_ITEM_PACKET_UPGRADE] = std::max(mPurchases[STORE_ITEM_PACKET_UPGRADE], 4U);
+}
+
 void PlayerInfo::AddCoins(int theAmount)
 {
 	mCoins += theAmount;

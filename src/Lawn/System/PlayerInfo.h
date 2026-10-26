@@ -111,6 +111,7 @@ public:
 	PlayerInfo();
 
 	void                Reset();
+	void                UnlockContent();
 	void     AddCoins(int theAmount);
 	void                SyncSummary(DataSync& theSync);
 	void                SyncDetails(DataSync& theSync);

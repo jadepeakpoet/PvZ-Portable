@@ -121,6 +121,7 @@ else()
 endif()
 
 option(PVZ_DEBUG "Enable PVZ_DEBUG macro to enable cheats, hidden features, etc." ${PVZ_DEBUG_DEFAULT})
+option(PVZ_DEFAULT_UNLOCKED "Start new profiles with all playable content unlocked" OFF)
 option(PVZ_TRAINER "Build the bilingual in-process toolkit" ON)
 option(PVZ_TRAINER_TESTS "Build toolkit format and translation tests" OFF)
 if(PVZ_TRAINER)
@@ -235,6 +236,7 @@ target_include_directories(pvz-portable PRIVATE
 )
 target_compile_definitions(pvz-portable PRIVATE
 	$<$<BOOL:${PVZ_TRAINER}>:PVZ_TRAINER>
+	$<$<BOOL:${PVZ_DEFAULT_UNLOCKED}>:PVZ_DEFAULT_UNLOCKED>
 	$<$<BOOL:${PVZ_DEBUG}>:PVZ_DEBUG>
 	$<$<BOOL:${DO_FIX_BUGS}>:DO_FIX_BUGS>
 )

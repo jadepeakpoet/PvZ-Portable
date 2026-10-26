@@ -112,3 +112,13 @@ Integration tests use unique temporary saves under the build directory. Mobile
 layout testing on desktop is not a substitute for Android/iOS device testing.
 Implementation reference: https://github.com/lmintlcx/pvztoolkit (GPL-3.0).
 The font rasterizer attribution is in `src/Trainer/third_party/README.md`.
+
+## Default-unlocked builds / 默认解锁包
+
+Configure `-DPVZ_DEFAULT_UNLOCKED=ON` to unlock modes, plants, ten seed slots
+and permanent shop upgrades for newly created profiles. Existing profiles are
+loaded unchanged; use the toolkit unlock button to unlock one explicitly. The
+option defaults to OFF and works independently of PVZ_TRAINER. Coins and
+achievements are not granted. iOS bundles may include main.pak and properties/;
+Documents resources take precedence over bundled resources. Game resources stay
+out of source control.
